@@ -290,6 +290,9 @@ async def need_download(file, **kwargs):
 async def download(file, session, **kwargs):
     url, filename, timestamp, filesize = file
     semaphore = kwargs["semaphore"]
+    replace_from = kwargs.get("strm_from")
+    replace_to = kwargs.get("strm_to")
+    
     async with semaphore:
         try:
             async with session.get(url) as response:
@@ -297,9 +300,28 @@ async def download(file, session, **kwargs):
                     file_path = os.path.join(kwargs["media"], filename.lstrip("/"))
                     os.umask(0)
                     os.makedirs(os.path.dirname(file_path), mode=0o777, exist_ok=True)
+                    content = await response.read()
+
+                    # ========= 新增 strm 替换逻辑 =========
+                    if (
+                        filename.lower().endswith(".strm")
+                        and replace_from
+                        and replace_to
+                    ):
+                        try:
+                            text = content.decode("utf-8", errors="ignore")
+                            if replace_from in text:
+                                logger.debug("Applying strm replace on: %s", filename)
+                                text = text.replace(replace_from, replace_to)
+                            content = text.encode("utf-8")
+                        except Exception as e:
+                            logger.exception("STRM replace failed: %s", e)
+                    # ====================================
+
+
                     async with aiofiles.open(file_path, "wb") as f:
                         logger.debug("Starting to write file: %s", filename)
-                        await f.write(await response.content.read())
+                        await f.write(content)
                         logger.debug("Finish to write file: %s", filename)
                     os.chmod(file_path, 0o777)
                     logger.info("Downloaded: %s", filename)
@@ -620,6 +642,19 @@ async def main():
         type=str,
         help="Bitmap of paths or a file containing paths to be selected (See paths.example)",
     )
+    parser.add_argument(
+        "--strm-from",
+        dest="strm_from",
+        type=str,
+        help="strm 文件中要被替换的内容",
+    )
+
+    parser.add_argument(
+        "--strm-to",
+        dest="strm_to",
+        type=str,
+        help="strm 文件替换成的内容",
+    )
 
     args = parser.parse_args()
     if args.debug:
@@ -743,6 +778,8 @@ async def main():
             media=media,
             nfo=args.nfo,
             paths=paths,
+            strm_from=args.strm_from,
+            strm_to=args.strm_to,
         )
     if db_session:
         await db_session.commit()
