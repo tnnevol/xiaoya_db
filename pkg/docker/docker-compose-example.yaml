@@ -1,0 +1,24 @@
+services:
+  tnnevol-emd:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - BRANCH=main
+    image: tnnevol/tnnevol-emd:latest
+    container_name: xiaoya-emd
+    network_mode: host
+    #deploy:
+    #  resources:
+    #    limits:
+    #      memory: 1G
+    volumes:
+      # strm 媒体位置
+      - xiaoya-media:/media
+    environment:
+      - TZ=Asia/Shanghai
+      - CYCLE=86400
+      - RESTART_AUTO_UPDATE=false
+    # https://openlist.site.com 换成自己的
+    command: --media /media --count 90 --paths /media/scan-paths.txt --strm-from "http://xiaoya.host:5678/d" --strm-to "https://openlist.site.com/d/xiaoya-alist"
+    restart: unless-stopped

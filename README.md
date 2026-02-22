@@ -7,53 +7,40 @@
 ---
 
 
-## Prerequisite
-
-Python 3.12+
-
-Linux kernal "Max open files" need to be extended
-
-Save it into /etc/profile.d/ to make it global avaiable after reboot
-
-```bash
-ulimit -n 4096
-```
----
-
-For Network mount, please add 'nolock' option. See [Issue#47](https://github.com/Rik-F5/xiaoya_db/issues/47#issuecomment-2162641424)
-
 ## Docker Run
-
-**docker-cli**
-
-```shell
-docker run -d \
-    --name=xiaoya-emd \
-    --restart=always \
-    --net=host \
-    -v 媒体库目录:/media \
-    -e CYCLE=86400 \
-    -e RESTART_AUTO_UPDATE=false \
-    ddsderek/xiaoya-emd:latest \
-    --media /media
-```
 
 **docker-compose**
 
+```bash
+cd pkg/docker
+touch docker-compose.yaml
+```
+
 ```yaml
-version: "3"
 services:
-    xiaoya-emd:
-        container_name: xiaoya-emd
-        restart: always
-        network_mode: host
-        volumes:
-            - 媒体库目录:/media
-        environment:
-            - CYCLE=86400
-            - RESTART_AUTO_UPDATE=false
-        image: ddsderek/xiaoya-emd:latest
-        command: --media /media
+  tnnevol-emd:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - BRANCH=main
+    image: tnnevol/tnnevol-emd:latest
+    container_name: xiaoya-emd
+    network_mode: host
+    #deploy:
+    #  resources:
+    #    limits:
+    #      memory: 1G
+    volumes:
+      # strm 媒体位置
+      - xiaoya-media:/media
+    environment:
+      - TZ=Asia/Shanghai
+      - CYCLE=86400
+      - RESTART_AUTO_UPDATE=false
+    # https://openlist.site.com 换成自己的
+    command: --media /media --count 90 --paths /media/scan-paths.txt --strm-from "http://xiaoya.host:5678/d" --strm-to "https://openlist.site.com/d/xiaoya-alist"
+    restart: unless-stopped
 ```
 
 ## Installation
@@ -139,4 +126,6 @@ python solid.py
   --location <folder>  Path to store database files [Default: None]
 
   --paths <file>       Bitmap of paths or a file containing paths to be selected (See paths.example)
+  --strm-from <url>    被替换的值
+  --strm-to <url>      替换的值
 ···
