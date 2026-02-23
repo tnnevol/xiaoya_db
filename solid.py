@@ -324,6 +324,8 @@ async def download(file, session, **kwargs):
                         await f.write(content)
                         logger.debug("Finish to write file: %s", filename)
                     os.chmod(file_path, 0o777)
+                    # 同步文件时间戳为远程文件的时间戳
+                    os.utime(file_path, (int(timestamp), int(timestamp)))
                     logger.info("Downloaded: %s", filename)
                 else:
                     logger.error(
