@@ -265,16 +265,34 @@ async def parse(url, session, **kwargs) -> set:
 async def need_download(file, **kwargs):
     url, filename, timestamp, filesize = file
     file_path = os.path.join(kwargs["media"], filename.lstrip("/"))
+    
+    # 特殊处理 strm 文件：优先检查 bak 文件
+    if filename.lower().endswith(".strm"):
+        backup_path = file_path + ".bak"
+        if os.path.exists(backup_path):
+            # 如果存在 bak 文件，则比较 bak 文件的时间戳和大小
+            current_filesize = os.path.getsize(backup_path)
+            current_timestamp = os.path.getmtime(backup_path)
+            logger.debug("%s.bak has timestamp: %s and size: %s", filename, timestamp, filesize)
+            if int(filesize) == int(current_filesize) and int(timestamp) <= int(current_timestamp):
+                logger.debug("%s doesn't need download (based on .bak file)", filename)
+                return False
+            else:
+                logger.debug("%s needs download (based on .bak file comparison)", filename)
+                return True
+    
+    # 原有的普通文件检查逻辑
     if not os.path.exists(file_path):
         logger.debug("%s doesn't exists", file_path)
         return True
     elif file_path.endswith(".nfo"):
         if not kwargs["nfo"]:
             return False
+    
     current_filesize = os.path.getsize(file_path)
     current_timestamp = os.path.getmtime(file_path)
     logger.debug("%s has timestamp: %s and size: %s", filename, timestamp, filesize)
-    if int(timestamp) <= int(
+    if int(filesize) == int(current_filesize) and int(timestamp) <= int(
         current_timestamp
     ):
         return False
@@ -312,8 +330,14 @@ async def download(file, session, **kwargs):
                             text = content.decode("utf-8", errors="ignore")
                             if replace_from in text:
                                 logger.debug("Applying strm replace on: %s", filename)
+                                # 创建备份文件，保存原始内容
+                                backup_path = file_path + ".bak"
+                                async with aiofiles.open(backup_path, "wb") as backup_f:
+                                    await backup_f.write(content)
+                                    logger.debug("Created backup file: %s", backup_path)
+                                # 执行替换
                                 text = text.replace(replace_from, replace_to)
-                            content = text.encode("utf-8")
+                                content = text.encode("utf-8")
                         except Exception as e:
                             logger.exception("STRM replace failed: %s", e)
                     # ====================================
