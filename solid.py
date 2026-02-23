@@ -268,8 +268,10 @@ async def need_download(file, **kwargs):
     
     # 特殊处理 strm 文件：优先检查 bak 文件
     if filename.lower().endswith(".strm"):
+        logger.debug("%s is a strm file", filename)
         backup_path = file_path + ".bak"
         if os.path.exists(backup_path):
+            logger.debug("%s.bak exists", filename)
             # 如果存在 bak 文件，则比较 bak 文件的时间戳和大小
             current_filesize = os.path.getsize(backup_path)
             current_timestamp = os.path.getmtime(backup_path)
@@ -316,6 +318,7 @@ async def download(file, session, **kwargs):
             async with session.get(url) as response:
                 if response.status == 200:
                     file_path = os.path.join(kwargs["media"], filename.lstrip("/"))
+                    logger.debug("Downloading %s to %s", url, file_path)
                     os.umask(0)
                     os.makedirs(os.path.dirname(file_path), mode=0o777, exist_ok=True)
                     content = await response.read()
@@ -331,14 +334,13 @@ async def download(file, session, **kwargs):
                             if replace_from in text:
                                 logger.debug("Applying strm replace on: %s", filename)
                                 # 创建备份文件，保存原始内容
-                                backup_path = file_path + ".bak"
-                                logger.debug("Creating backup file: %s", backup_path)
-                                async with aiofiles.open(backup_path, "wb") as backup_f:
-                                    logger.debug("Writing backup file: %s", backup_path)
+                                backup_filename = filename + ".bak"
+                                logger.debug("Creating backup file: %s", backup_filename)
+                                async with aiofiles.open(backup_filename, "wb") as backup_f:
+                                    logger.debug("Writing backup file: %s", backup_filename)
                                     await backup_f.write(content)
-                                    logger.debug("Backup file written: %s", backup_path)
-                                    os.chmod(backup_path, 0o777)
-                                    logger.debug("Backup file chmod done: %s", backup_path)
+                                    logger.debug("Backup file written: %s", backup_filename)
+                                    logger.debug("Backup file chmod done: %s", backup_filename)
                                 # 执行替换
                                 text = text.replace(replace_from, replace_to)
                                 content = text.encode("utf-8")
