@@ -11,11 +11,6 @@
 
 **docker-compose**
 
-```bash
-cd pkg/docker
-touch docker-compose.yaml
-```
-
 ```yaml
 services:
   tnnevol-emd:
