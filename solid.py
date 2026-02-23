@@ -332,9 +332,13 @@ async def download(file, session, **kwargs):
                                 logger.debug("Applying strm replace on: %s", filename)
                                 # 创建备份文件，保存原始内容
                                 backup_path = file_path + ".bak"
+                                logger.debug("Creating backup file: %s", backup_path)
                                 async with aiofiles.open(backup_path, "wb") as backup_f:
+                                    logger.debug("Writing backup file: %s", backup_path)
                                     await backup_f.write(content)
-                                    logger.debug("Created backup file: %s", backup_path)
+                                    logger.debug("Backup file written: %s", backup_path)
+                                    os.chmod(backup_path, 0o777)
+                                    logger.debug("Backup file chmod done: %s", backup_path)
                                 # 执行替换
                                 text = text.replace(replace_from, replace_to)
                                 content = text.encode("utf-8")
@@ -348,8 +352,6 @@ async def download(file, session, **kwargs):
                         await f.write(content)
                         logger.debug("Finish to write file: %s", filename)
                     os.chmod(file_path, 0o777)
-                    # 同步文件时间戳为远程文件的时间戳
-                    os.utime(file_path, (int(timestamp), int(timestamp)))
                     logger.info("Downloaded: %s", filename)
                 else:
                     logger.error(
