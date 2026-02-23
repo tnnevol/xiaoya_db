@@ -334,13 +334,13 @@ async def download(file, session, **kwargs):
                             if replace_from in text:
                                 logger.debug("Applying strm replace on: %s", filename)
                                 # 创建备份文件，保存原始内容
-                                backup_filename = filename + ".bak"
-                                logger.debug("Creating backup file: %s", backup_filename)
-                                async with aiofiles.open(backup_filename, "wb") as backup_f:
-                                    logger.debug("Writing backup file: %s", backup_filename)
+                                backup_path = file_path + ".bak"
+                                logger.debug("Creating backup file: %s", backup_path)
+                                async with aiofiles.open(backup_path, "wb") as backup_f:
+                                    logger.debug("Writing backup file: %s", backup_path)
                                     await backup_f.write(content)
-                                    logger.debug("Backup file written: %s", backup_filename)
-                                    logger.debug("Backup file chmod done: %s", backup_filename)
+                                    logger.debug("Backup file written: %s", backup_path)
+                                    logger.debug("Backup file chmod done: %s", backup_path)
                                 # 执行替换
                                 text = text.replace(replace_from, replace_to)
                                 content = text.encode("utf-8")
