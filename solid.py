@@ -274,7 +274,7 @@ async def need_download(file, **kwargs):
     current_filesize = os.path.getsize(file_path)
     current_timestamp = os.path.getmtime(file_path)
     logger.debug("%s has timestamp: %s and size: %s", filename, timestamp, filesize)
-    if int(filesize) == int(current_filesize) and int(timestamp) <= int(
+    if int(timestamp) <= int(
         current_timestamp
     ):
         return False
