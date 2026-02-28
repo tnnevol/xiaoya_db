@@ -266,23 +266,17 @@ async def need_download(file, **kwargs):
     url, filename, timestamp, filesize = file
     file_path = os.path.join(kwargs["media"], filename.lstrip("/"))
     
-    # 特殊处理 strm 文件：优先检查 bak 文件
+    # 特殊处理 strm 文件：优先检查 meta 文件
     if filename.lower().endswith(".strm"):
         logger.debug("%s is a strm file", filename)
-        backup_path = file_path + ".bak"
-        if os.path.exists(backup_path):
-            logger.debug("%s.bak exists", filename)
-            # 如果存在 bak 文件，则比较 bak 文件的时间戳和大小
-            current_filesize = os.path.getsize(backup_path)
-            current_timestamp = os.path.getmtime(backup_path)
-            logger.debug("%s.bak has timestamp: %s and size: %s", filename, timestamp, filesize)
-            if int(filesize) == int(current_filesize) and int(timestamp) <= int(current_timestamp):
-                logger.debug("%s doesn't need download (based on .bak file)", filename)
-                return False
-            else:
-                logger.debug("%s needs download (based on .bak file comparison)", filename)
-                return True
-    
+        meta_path = f"{file_path}.{filesize}.meta"
+        if os.path.exists(meta_path):
+            logger.debug("%s meta file exists: %s", filename, meta_path)
+            # 如果存在 meta 文件，则表示文件大小匹配
+            logger.debug("%s doesn't need download (based on meta file)", filename)
+            return False
+        else:
+            logger.debug("%s meta file does not exist: %s", filename, meta_path)
     # 原有的普通文件检查逻辑
     if not os.path.exists(file_path):
         logger.debug("%s doesn't exists", file_path)
@@ -333,14 +327,13 @@ async def download(file, session, **kwargs):
                             text = content.decode("utf-8", errors="ignore")
                             if replace_from in text:
                                 logger.debug("Applying strm replace on: %s", filename)
-                                # 创建备份文件，保存原始内容
-                                backup_path = file_path + ".bak"
-                                logger.debug("Creating backup file: %s", backup_path)
-                                async with aiofiles.open(backup_path, "wb") as backup_f:
-                                    logger.debug("Writing backup file: %s", backup_path)
-                                    await backup_f.write(content)
-                                    logger.debug("Backup file written: %s", backup_path)
-                                    logger.debug("Backup file chmod done: %s", backup_path)
+                                # 创建 meta 文件，保存文件大小信息
+                                meta_path = f"{file_path}.{filesize}.meta"
+                                logger.debug("Creating meta file: %s", meta_path)
+                                async with aiofiles.open(meta_path, "w") as meta_f:
+                                    # meta 文件内容为空
+                                    pass
+                                logger.debug("Meta file created: %s", meta_path)
                                 # 执行替换
                                 text = text.replace(replace_from, replace_to)
                                 content = text.encode("utf-8")
@@ -483,7 +476,10 @@ async def write_one(url, session, db_session, **kwargs) -> list:
 async def bulk_crawl_and_write(url, session, db_session, depth=0, **kwargs) -> None:
     tasks = set()
     directories = await write_one(
-        url=url, session=session, db_session=db_session, **kwargs
+        url=url,
+        session=session,
+        db_session=db_session,
+        **kwargs,
     )
     for url in directories:
         task = asyncio.create_task(
