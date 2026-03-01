@@ -399,7 +399,8 @@ def process_folder(folder, media):
     for root, dirs, files in os.walk(folder, topdown=False):
         dirs[:] = [d for d in dirs if d not in s_folder]
         for file in files:
-            if not file.startswith(".") and not file.lower().endswith(tuple(s_ext)):
+            # 过滤掉 .meta 文件
+            if not file.startswith(".") and not file.lower().endswith(tuple(s_ext)) and not file.endswith(".meta"):
                 file_path = os.path.join(root, file)
                 try:
                     # Attempt to decode the filename to UTF-8
